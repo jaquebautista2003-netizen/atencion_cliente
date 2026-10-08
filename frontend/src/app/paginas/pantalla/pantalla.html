@@ -1,0 +1,53 @@
+<div class="pantalla">
+  <header>
+    <a routerLink="/" class="titulo">Atención a Clientes</a>
+    <div class="derecha">
+      @if (!sonido()) {
+        <button class="activar" (click)="activarSonido()">🔊 Activar sonido</button>
+      }
+      <span class="hora">{{ horaActual() }}</span>
+    </div>
+  </header>
+
+  <div class="cuerpo">
+    <section class="mesas">
+      <div class="encabezado">
+        <span>Turno</span>
+        <span>Mesa</span>
+      </div>
+      @for (mesa of svc.mesas(); track mesa.id) {
+        <div
+          class="renglon"
+          [class.nuevo]="destacado()?.mesa_id === mesa.id && destacado()?.codigo === mesa.turno?.codigo"
+          [class.inactiva]="!mesa.activa"
+        >
+          <span class="codigo turno">{{ mesa.turno?.codigo ?? '—' }}</span>
+          <span class="flecha" aria-hidden="true">→</span>
+          <span class="codigo num-mesa">{{ mesa.id }}</span>
+        </div>
+      }
+    </section>
+
+    <aside class="proximos">
+      <h2>Próximos</h2>
+      <ol>
+        @for (t of proximos(); track t.id) {
+          <li class="codigo">{{ t.codigo }}</li>
+        } @empty {
+          <li class="vacio">Sin turnos en espera</li>
+        }
+      </ol>
+      @if (svc.fila().length > proximos().length) {
+        <p class="mas">+ {{ svc.fila().length - proximos().length }} más</p>
+      }
+    </aside>
+  </div>
+
+  @if (destacado(); as d) {
+    <div class="llamado" role="alert">
+      <span class="etiqueta-llamado">Turno</span>
+      <span class="codigo">{{ d.codigo }}</span>
+      <span class="etiqueta-llamado">Pase a la mesa <b>{{ d.mesa_id }}</b></span>
+    </div>
+  }
+</div>

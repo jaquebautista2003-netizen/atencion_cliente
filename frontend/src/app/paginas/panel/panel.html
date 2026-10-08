@@ -1,0 +1,127 @@
+@let s = svc.stats();
+
+<section class="stats">
+  <div class="stat">
+    <span class="etiqueta">En fila</span>
+    <strong>{{ s?.en_espera ?? 0 }}</strong>
+  </div>
+  <div class="stat">
+    <span class="etiqueta">En atención</span>
+    <strong>{{ s?.en_atencion ?? 0 }}<small>/ {{ svc.mesas().length }}</small></strong>
+  </div>
+  <div class="stat">
+    <span class="etiqueta">Atendidos</span>
+    <strong>{{ s?.atendidos ?? 0 }}</strong>
+  </div>
+  <div class="stat">
+    <span class="etiqueta">Espera promedio</span>
+    <strong class="chico">{{ duracion(s?.espera_promedio_seg) }}</strong>
+  </div>
+  <div class="stat">
+    <span class="etiqueta">Atención promedio</span>
+    <strong class="chico">{{ duracion(s?.atencion_promedio_seg) }}</strong>
+  </div>
+</section>
+
+<div class="tablero">
+  <!-- ======================= TOMAR TURNO ======================= -->
+  <section class="columna kiosco">
+    <h2 class="etiqueta">Recepción</h2>
+    <button class="tomar" (click)="tomarTurno()" [disabled]="ocupado()">
+      <span class="mas">+</span>
+      Tomar turno
+    </button>
+
+    @if (ultimoTicket(); as t) {
+      <div class="ticket">
+        <span class="etiqueta">Último ticket</span>
+        <span class="codigo">{{ t.codigo }}</span>
+        <span class="ticket-pie">
+          @if (t.mesa_id) {
+            Asignado a Mesa {{ t.mesa_id }}
+          } @else {
+            Esperando · posición {{ t.posicion }}
+          }
+        </span>
+      </div>
+    }
+
+    <button class="btn btn-fantasma reiniciar" (click)="reiniciar()" [disabled]="ocupado()">
+      Reiniciar jornada
+    </button>
+  </section>
+
+  <!-- ========================== MESAS ========================== -->
+  <section class="columna">
+    <h2 class="etiqueta">Mesas de atención</h2>
+    <div class="mesas">
+      @for (mesa of svc.mesas(); track mesa.id) {
+        <article
+          class="mesa"
+          [class.ocupada]="mesa.ocupada"
+          [class.pausada]="!mesa.activa"
+        >
+          <header>
+            <span class="mesa-nombre">{{ mesa.nombre }}</span>
+            <span class="chip">
+              @if (!mesa.activa) { Pausada }
+              @else if (mesa.ocupada) { Atendiendo }
+              @else { Libre }
+            </span>
+          </header>
+
+          <div class="mesa-turno">
+            @if (mesa.turno; as t) {
+              <span class="codigo">{{ t.codigo }}</span>
+              <span class="tiempo">⏱ {{ transcurrido(t.llamado_en) }}</span>
+            } @else {
+              <span class="vacia">—</span>
+              <span class="tiempo">{{ mesa.activa ? 'Esperando cliente' : 'Sin recibir turnos' }}</span>
+            }
+          </div>
+
+          <footer>
+            <button
+              class="btn btn-primario"
+              (click)="finalizar(mesa)"
+              [disabled]="!mesa.ocupada || ocupado()"
+            >
+              Finalizar atención
+            </button>
+            <button
+              class="btn btn-fantasma"
+              (click)="alternarMesa(mesa)"
+              [disabled]="ocupado()"
+              [attr.aria-label]="(mesa.activa ? 'Pausar ' : 'Reanudar ') + mesa.nombre"
+            >
+              {{ mesa.activa ? 'Pausar' : 'Reanudar' }}
+            </button>
+          </footer>
+        </article>
+      } @empty {
+        <p class="cargando">Conectando con el servidor…</p>
+      }
+    </div>
+  </section>
+
+  <!-- =========================== FILA ========================== -->
+  <section class="columna fila">
+    <h2 class="etiqueta">Fila de espera · {{ svc.fila().length }}</h2>
+    <ol>
+      @for (t of svc.fila(); track t.id; let i = $index) {
+        <li [class.siguiente]="i === 0">
+          <span class="pos">{{ i + 1 }}</span>
+          <span class="codigo">{{ t.codigo }}</span>
+          <span class="espera">{{ transcurrido(t.creado_en) }}</span>
+          <button class="quitar" (click)="cancelar(t)" [attr.aria-label]="'Quitar ' + t.codigo">×</button>
+        </li>
+      } @empty {
+        <li class="vacio">No hay nadie esperando</li>
+      }
+    </ol>
+  </section>
+</div>
+
+@if (aviso(); as msg) {
+  <div class="toast" role="status">{{ msg }}</div>
+}

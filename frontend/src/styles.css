@@ -1,0 +1,123 @@
+:root {
+  --papel: #f4f1ea;
+  --papel-2: #ebe6db;
+  --tarjeta: #fffdf8;
+  --tinta: #14213d;
+  --tinta-suave: #4a5470;
+  --linea: #d9d2c3;
+  --acento: #e85d2a;
+  --acento-suave: #fde4d8;
+  --ok: #1f8a5b;
+  --ok-suave: #dcf1e6;
+  --pausa: #8a8370;
+  --pausa-suave: #e8e4da;
+  --sombra: 0 1px 0 rgba(20, 33, 61, 0.06), 0 8px 24px -12px rgba(20, 33, 61, 0.18);
+  --radio: 14px;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.codigo {
+  font-family: var(--mono);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.btn {
+  border: 1.5px solid var(--tinta);
+  background: var(--tarjeta);
+  color: var(--tinta);
+  border-radius: 10px;
+  padding: 0.55rem 0.95rem;
+  font-weight: 600;
+  transition: transform 0.08s, background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--papel-2);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primario {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.btn-primario:hover:not(:disabled) {
+  background: #24345c;
+}
+
+.btn-acento {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+
+.btn-acento:hover:not(:disabled) {
+  background: #d14e1e;
+}
+
+.btn-fantasma {
+  border-color: var(--linea);
+}
+
+.etiqueta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tinta-suave);
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--tinta);
+  color: var(--papel);
+  padding: 0.75rem 1.1rem;
+  border-radius: 10px;
+  box-shadow: var(--sombra);
+  z-index: 50;
+  max-width: calc(100% - 32px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

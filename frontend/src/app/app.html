@@ -1,0 +1,23 @@
+@if (!pantallaCompleta()) {
+  <header class="barra">
+    <a routerLink="/" class="marca">
+      <span class="logo" aria-hidden="true">#</span>
+      <span>Atención a Clientes</span>
+    </a>
+
+    <nav>
+      <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Panel</a>
+      <a routerLink="/kiosco" target="_blank">Kiosco ↗</a>
+      <a routerLink="/pantalla" target="_blank">Pantalla TV ↗</a>
+    </nav>
+
+    <span class="conexion" [class.ok]="turnos.conectado()">
+      <span class="punto"></span>
+      {{ turnos.conectado() ? 'En vivo' : 'Reconectando…' }}
+    </span>
+  </header>
+}
+
+<main [class.completa]="pantallaCompleta()">
+  <router-outlet />
+</main>

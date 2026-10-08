@@ -1,0 +1,30 @@
+<div class="kiosco">
+  <a routerLink="/" class="volver" aria-label="Volver al panel">←</a>
+
+  @if (ticket(); as t) {
+    <div class="papel" role="status">
+      <span class="etiqueta">Su turno es</span>
+      <span class="codigo">{{ t.codigo }}</span>
+      @if (vivo()?.mesa; as mesa) {
+        <p class="destino">Pase a la <strong>Mesa {{ mesa }}</strong></p>
+      } @else {
+        <p class="destino">
+          Hay <strong>{{ (vivo()?.posicion ?? 1) - 1 }}</strong> persona(s) antes que usted.
+          <br />Espere a ser llamado en pantalla.
+        </p>
+      }
+      <button class="btn btn-primario" (click)="listo()">Listo</button>
+    </div>
+  } @else {
+    <h1>Bienvenido</h1>
+    <p class="sub">Presione el botón para obtener su turno</p>
+    <button class="boton" (click)="tomar()" [disabled]="ocupado()">
+      <span class="mas">+</span>
+      Tomar turno
+    </button>
+    <p class="info">Personas en fila: <strong>{{ enFila() }}</strong></p>
+    @if (error(); as e) {
+      <p class="error">{{ e }}</p>
+    }
+  }
+</div>
