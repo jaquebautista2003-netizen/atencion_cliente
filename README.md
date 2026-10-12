@@ -96,3 +96,14 @@ frontend/
       kiosco/     Pantalla para que el cliente tome turno
       pantalla/   Pantalla de TV con anuncio por voz
 ```
+
+## Despliegue en Vercel
+
+En producción: **https://atencion-cliente-eight.vercel.app**
+
+- `vercel.json` compila Angular y publica la API de Python en `api/index.py`.
+- Vercel no admite WebSocket: el frontend lo detecta y consulta el estado cada 2 s.
+- Sin base de datos externa, Vercel usa SQLite en `/tmp`, que **se reinicia** cuando la
+  función se recicla. Para datos permanentes conecta Postgres (Neon) desde
+  *Storage → Create Database* en el proyecto de Vercel; la variable `DATABASE_URL`
+  o `POSTGRES_URL` se detecta sola. Después vuelve a desplegar.
