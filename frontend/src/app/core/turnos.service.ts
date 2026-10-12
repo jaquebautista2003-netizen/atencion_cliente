@@ -17,7 +17,10 @@ export class TurnosService {
   private ws?: WebSocket;
   private reintento?: ReturnType<typeof setTimeout>;
   private ping?: ReturnType<typeof setInterval>;
+  private sondeo?: ReturnType<typeof setInterval>;
   private intentos = 0;
+  /** true si el WebSocket llegó a abrir alguna vez (servidor tradicional). */
+  private wsDisponible = false;
 
   readonly estado = signal<EstadoSistema | null>(null);
   readonly conectado = signal(false);
@@ -36,19 +39,19 @@ export class TurnosService {
 
   // ---------------------------------------------------------------- acciones
   tomarTurno(): Promise<Turno> {
-    return this.ejecutar(this.http.post<Turno>(`${this.api}/turnos`, {}));
+    return this.accion(this.http.post<Turno>(`${this.api}/turnos`, {}));
   }
 
   finalizarAtencion(mesaId: number) {
-    return this.ejecutar(this.http.post(`${this.api}/mesas/${mesaId}/finalizar`, {}));
+    return this.accion(this.http.post(`${this.api}/mesas/${mesaId}/finalizar`, {}));
   }
 
   cambiarMesa(mesaId: number, activa: boolean) {
-    return this.ejecutar(this.http.patch(`${this.api}/mesas/${mesaId}`, { activa }));
+    return this.accion(this.http.patch(`${this.api}/mesas/${mesaId}`, { activa }));
   }
 
   cancelarTurno(turnoId: number) {
-    return this.ejecutar(this.http.delete(`${this.api}/turnos/${turnoId}`));
+    return this.accion(this.http.delete(`${this.api}/turnos/${turnoId}`));
   }
 
   consultarTurno(turnoId: number): Promise<Turno> {
@@ -56,7 +59,18 @@ export class TurnosService {
   }
 
   reiniciar() {
-    return this.ejecutar(this.http.post(`${this.api}/reiniciar`, {}));
+    return this.accion(this.http.post(`${this.api}/reiniciar`, {}));
+  }
+
+  /** Ejecuta una acción y, si no hay WebSocket, refresca el estado al instante. */
+  private async accion<T>(peticion: import('rxjs').Observable<T>): Promise<T> {
+    const r = await this.ejecutar(peticion);
+    if (!this.conectadoWs()) this.refrescar();
+    return r;
+  }
+
+  private conectadoWs() {
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
   // --------------------------------------------------------------- tiempo real
@@ -65,6 +79,8 @@ export class TurnosService {
     this.ws = new WebSocket(`${protocolo}://${location.host}/ws`);
 
     this.ws.onopen = () => {
+      this.wsDisponible = true;
+      this.detenerSondeo();
       this.conectado.set(true);
       this.intentos = 0;
       this.ping = setInterval(() => this.ws?.send('ping'), 25000);
@@ -72,28 +88,46 @@ export class TurnosService {
 
     this.ws.onmessage = (e) => {
       const msg: MensajeWs = JSON.parse(e.data);
-      this.detectarLlamado(msg.estado);
-      this.estado.set(msg.estado);
+      this.aplicar(msg.estado);
     };
 
     this.ws.onclose = () => {
-      this.conectado.set(false);
       clearInterval(this.ping);
-      // Reconexión con espera progresiva (1s, 2s, 4s ... máx 10s)
-      const espera = Math.min(1000 * 2 ** this.intentos++, 10000);
-      this.reintento = setTimeout(() => this.conectar(), espera);
-      // Mientras tanto, mantener el estado actualizado por HTTP
-      this.refrescar();
+      // Hosting serverless (p. ej. Vercel) no admite WebSocket:
+      // se pasa a consultar el estado por HTTP cada 2 segundos.
+      this.iniciarSondeo();
+      if (this.wsDisponible) {
+        // El servidor sí tiene WebSocket: reconectar con espera progresiva (1s, 2s, 4s… máx 10s)
+        const espera = Math.min(1000 * 2 ** this.intentos++, 10000);
+        this.reintento = setTimeout(() => this.conectar(), espera);
+      }
     };
+  }
+
+  private iniciarSondeo() {
+    if (this.sondeo) return;
+    this.refrescar();
+    this.sondeo = setInterval(() => this.refrescar(), 2000);
+  }
+
+  private detenerSondeo() {
+    clearInterval(this.sondeo);
+    this.sondeo = undefined;
   }
 
   private async refrescar() {
     try {
       const estado = await firstValueFrom(this.http.get<EstadoSistema>(`${this.api}/estado`));
-      this.estado.set(estado);
+      this.aplicar(estado);
+      if (!this.conectadoWs()) this.conectado.set(true);
     } catch {
-      /* backend no disponible: se reintenta con el WebSocket */
+      if (!this.conectadoWs()) this.conectado.set(false);
     }
+  }
+
+  private aplicar(estado: EstadoSistema) {
+    this.detectarLlamado(estado);
+    this.estado.set(estado);
   }
 
   private detectarLlamado(nuevo: EstadoSistema) {
@@ -109,6 +143,7 @@ export class TurnosService {
   private cerrar() {
     clearTimeout(this.reintento);
     clearInterval(this.ping);
+    this.detenerSondeo();
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.close();

@@ -3,8 +3,21 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Ruta de la base de datos SQLite (se puede cambiar con la variable DB_PATH)
-DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "turnos.db"))
+# ¿Corriendo en Vercel? (solo /tmp es escribible y no hay WebSocket)
+EN_VERCEL = bool(os.getenv("VERCEL"))
+
+# Postgres (Neon / Vercel Postgres / Supabase...). Si no existe se usa SQLite.
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("NEON_DATABASE_URL")
+    or ""
+)
+
+# Ruta de la base SQLite
+DB_PATH = os.getenv(
+    "DB_PATH", "/tmp/turnos.db" if EN_VERCEL else str(BASE_DIR / "turnos.db")
+)
 
 # Número de mesas de atención
 NUM_MESAS = int(os.getenv("NUM_MESAS", "4"))

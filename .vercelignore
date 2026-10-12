@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.angular
+**/__pycache__
+**/.pytest_cache
+backend/tests
+*.db
+*.db-*

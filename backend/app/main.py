@@ -5,6 +5,7 @@ Docs:      http://localhost:8000/docs
 """
 
 import asyncio
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
@@ -41,9 +42,20 @@ class GestorConexiones:
 
 
 def crear_app(servicio: ServicioTurnos | None = None) -> FastAPI:
+    estado_app = {"servicio": servicio}
+    candado_init = threading.Lock()
+
+    def obtener_servicio() -> ServicioTurnos:
+        # Inicialización perezosa: en serverless (Vercel) el evento de arranque
+        # no siempre se ejecuta, así que se crea en la primera petición.
+        if estado_app["servicio"] is None:
+            with candado_init:
+                if estado_app["servicio"] is None:
+                    estado_app["servicio"] = ServicioTurnos()
+        return estado_app["servicio"]
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.servicio = servicio or ServicioTurnos()
         yield
 
     app = FastAPI(
@@ -59,8 +71,8 @@ def crear_app(servicio: ServicioTurnos | None = None) -> FastAPI:
     )
     gestor = GestorConexiones()
 
-    def svc(request: Request) -> ServicioTurnos:
-        return request.app.state.servicio
+    def svc(_: Request | None = None) -> ServicioTurnos:
+        return obtener_servicio()
 
     async def notificar(request: Request, evento: str, datos: dict | None = None):
         estado = await asyncio.to_thread(svc(request).estado)
@@ -73,7 +85,7 @@ def crear_app(servicio: ServicioTurnos | None = None) -> FastAPI:
     # ------------------------------------------------------------- endpoints
     @app.get("/api/salud")
     async def salud():
-        return {"ok": True}
+        return {"ok": True, "motor": obtener_servicio().db.motor, "vercel": config.EN_VERCEL}
 
     @app.get("/api/estado")
     async def estado(request: Request):
@@ -120,7 +132,7 @@ def crear_app(servicio: ServicioTurnos | None = None) -> FastAPI:
     async def websocket(ws: WebSocket):
         await gestor.conectar(ws)
         try:
-            estado = await asyncio.to_thread(ws.app.state.servicio.estado)
+            estado = await asyncio.to_thread(obtener_servicio().estado)
             await ws.send_json({"evento": "conectado", "datos": {}, "estado": estado})
             while True:
                 await ws.receive_text()  # mantener viva la conexión (ping del cliente)

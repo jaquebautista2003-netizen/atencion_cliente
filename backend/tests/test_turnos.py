@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,9 +7,20 @@ from app.main import crear_app
 from app.servicio import ServicioTurnos
 
 
-@pytest.fixture
-def client(tmp_path):
-    servicio = ServicioTurnos(db_path=str(tmp_path / "test.db"), num_mesas=4)
+PG_URL = os.getenv("TEST_DATABASE_URL")
+MOTORES = ["sqlite"] + (["postgres"] if PG_URL else [])
+
+
+@pytest.fixture(params=MOTORES)
+def client(request, tmp_path):
+    if request.param == "postgres":
+        import psycopg
+
+        with psycopg.connect(PG_URL, autocommit=True) as c:
+            c.execute("DROP TABLE IF EXISTS mesas, turnos")
+        servicio = ServicioTurnos(num_mesas=4, database_url=PG_URL)
+    else:
+        servicio = ServicioTurnos(db_path=str(tmp_path / "test.db"), num_mesas=4, database_url="")
     with TestClient(crear_app(servicio)) as c:
         yield c
 
